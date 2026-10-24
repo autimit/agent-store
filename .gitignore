@@ -1,0 +1,13 @@
+.runtime/
+bin/
+node_modules/
+test-results/
+.env
+.env.*
+!.env.example
+.railway/
+*.db
+*.db-*
+*.sqlite*
+*.log
+.DS_Store

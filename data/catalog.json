@@ -1,0 +1,469 @@
+{
+  "loja": "agent-store",
+  "demonstracao": true,
+  "moeda": "BRL",
+  "produtos": [
+    {
+      "id": "tenis-sculpt",
+      "nome": "Tênis Sculpt",
+      "categoria": "tênis",
+      "descricao": "Tênis de silhueta esculpida, apresentado em três versões de cor. Produto conceitual para demonstração da Agent Store; materiais, desempenho e marca comercial não foram cadastrados.",
+      "imagens": [
+        {
+          "id": "sculpt-bordo",
+          "cor": "Bordô e Creme",
+          "arquivo": "sculpt-bordo.png",
+          "apelidos": [
+            "vinho",
+            "bordo",
+            "burgundy"
+          ]
+        },
+        {
+          "id": "sculpt-oliva",
+          "cor": "Oliva e Areia",
+          "arquivo": "sculpt-oliva.png",
+          "apelidos": [
+            "verde",
+            "oliva",
+            "olive"
+          ]
+        },
+        {
+          "id": "sculpt-preto",
+          "cor": "Preto e Prata",
+          "arquivo": "sculpt-preto.png",
+          "apelidos": [
+            "preto",
+            "grafite",
+            "carvao",
+            "charcoal"
+          ]
+        }
+      ],
+      "variantes": [
+        {
+          "id": "sculpt-bordo-38",
+          "cor": "Bordô e Creme",
+          "tamanho": "38",
+          "preco_centavos": 28990,
+          "disponivel": 3,
+          "imagem_id": "sculpt-bordo"
+        },
+        {
+          "id": "sculpt-bordo-39",
+          "cor": "Bordô e Creme",
+          "tamanho": "39",
+          "preco_centavos": 28990,
+          "disponivel": 4,
+          "imagem_id": "sculpt-bordo"
+        },
+        {
+          "id": "sculpt-bordo-40",
+          "cor": "Bordô e Creme",
+          "tamanho": "40",
+          "preco_centavos": 28990,
+          "disponivel": 5,
+          "imagem_id": "sculpt-bordo"
+        },
+        {
+          "id": "sculpt-bordo-41",
+          "cor": "Bordô e Creme",
+          "tamanho": "41",
+          "preco_centavos": 28990,
+          "disponivel": 2,
+          "imagem_id": "sculpt-bordo"
+        },
+        {
+          "id": "sculpt-bordo-42",
+          "cor": "Bordô e Creme",
+          "tamanho": "42",
+          "preco_centavos": 28990,
+          "disponivel": 2,
+          "imagem_id": "sculpt-bordo"
+        },
+        {
+          "id": "sculpt-bordo-43",
+          "cor": "Bordô e Creme",
+          "tamanho": "43",
+          "preco_centavos": 28990,
+          "disponivel": 0,
+          "imagem_id": "sculpt-bordo"
+        },
+        {
+          "id": "sculpt-bordo-44",
+          "cor": "Bordô e Creme",
+          "tamanho": "44",
+          "preco_centavos": 28990,
+          "disponivel": 1,
+          "imagem_id": "sculpt-bordo"
+        },
+        {
+          "id": "sculpt-oliva-38",
+          "cor": "Oliva e Areia",
+          "tamanho": "38",
+          "preco_centavos": 28990,
+          "disponivel": 2,
+          "imagem_id": "sculpt-oliva"
+        },
+        {
+          "id": "sculpt-oliva-39",
+          "cor": "Oliva e Areia",
+          "tamanho": "39",
+          "preco_centavos": 28990,
+          "disponivel": 3,
+          "imagem_id": "sculpt-oliva"
+        },
+        {
+          "id": "sculpt-oliva-40",
+          "cor": "Oliva e Areia",
+          "tamanho": "40",
+          "preco_centavos": 28990,
+          "disponivel": 0,
+          "imagem_id": "sculpt-oliva"
+        },
+        {
+          "id": "sculpt-oliva-41",
+          "cor": "Oliva e Areia",
+          "tamanho": "41",
+          "preco_centavos": 28990,
+          "disponivel": 4,
+          "imagem_id": "sculpt-oliva"
+        },
+        {
+          "id": "sculpt-oliva-42",
+          "cor": "Oliva e Areia",
+          "tamanho": "42",
+          "preco_centavos": 28990,
+          "disponivel": 0,
+          "imagem_id": "sculpt-oliva"
+        },
+        {
+          "id": "sculpt-oliva-43",
+          "cor": "Oliva e Areia",
+          "tamanho": "43",
+          "preco_centavos": 28990,
+          "disponivel": 2,
+          "imagem_id": "sculpt-oliva"
+        },
+        {
+          "id": "sculpt-oliva-44",
+          "cor": "Oliva e Areia",
+          "tamanho": "44",
+          "preco_centavos": 28990,
+          "disponivel": 1,
+          "imagem_id": "sculpt-oliva"
+        },
+        {
+          "id": "sculpt-preto-38",
+          "cor": "Preto e Prata",
+          "tamanho": "38",
+          "preco_centavos": 28990,
+          "disponivel": 4,
+          "imagem_id": "sculpt-preto"
+        },
+        {
+          "id": "sculpt-preto-39",
+          "cor": "Preto e Prata",
+          "tamanho": "39",
+          "preco_centavos": 28990,
+          "disponivel": 0,
+          "imagem_id": "sculpt-preto"
+        },
+        {
+          "id": "sculpt-preto-40",
+          "cor": "Preto e Prata",
+          "tamanho": "40",
+          "preco_centavos": 28990,
+          "disponivel": 3,
+          "imagem_id": "sculpt-preto"
+        },
+        {
+          "id": "sculpt-preto-41",
+          "cor": "Preto e Prata",
+          "tamanho": "41",
+          "preco_centavos": 28990,
+          "disponivel": 0,
+          "imagem_id": "sculpt-preto"
+        },
+        {
+          "id": "sculpt-preto-42",
+          "cor": "Preto e Prata",
+          "tamanho": "42",
+          "preco_centavos": 28990,
+          "disponivel": 2,
+          "imagem_id": "sculpt-preto"
+        },
+        {
+          "id": "sculpt-preto-43",
+          "cor": "Preto e Prata",
+          "tamanho": "43",
+          "preco_centavos": 28990,
+          "disponivel": 5,
+          "imagem_id": "sculpt-preto"
+        },
+        {
+          "id": "sculpt-preto-44",
+          "cor": "Preto e Prata",
+          "tamanho": "44",
+          "preco_centavos": 28990,
+          "disponivel": 3,
+          "imagem_id": "sculpt-preto"
+        }
+      ]
+    },
+    {
+      "id": "aut-tshirt",
+      "nome": "AUT T-SHIRT",
+      "categoria": "camisetas",
+      "descricao": "Camiseta conceitual AUT para demonstração da agent-store. As seis opções reutilizam a mesma imagem ilustrativa. Sem cobrança ou entrega real.",
+      "imagens": [
+        {
+          "id": "aut-oliva",
+          "cor": "Oliva",
+          "arquivo": "aut-tshirt.png",
+          "apelidos": [
+            "olive",
+            "verde"
+          ]
+        },
+        {
+          "id": "aut-gelo",
+          "cor": "Gelo",
+          "arquivo": "aut-tshirt.png",
+          "apelidos": [
+            "frost",
+            "branco"
+          ]
+        },
+        {
+          "id": "aut-azul",
+          "cor": "Azul",
+          "arquivo": "aut-tshirt.png",
+          "apelidos": [
+            "blue"
+          ]
+        },
+        {
+          "id": "aut-areia",
+          "cor": "Areia",
+          "arquivo": "aut-tshirt.png",
+          "apelidos": [
+            "sand"
+          ]
+        },
+        {
+          "id": "aut-grafite",
+          "cor": "Grafite",
+          "arquivo": "aut-tshirt.png",
+          "apelidos": [
+            "graphite",
+            "cinza"
+          ]
+        },
+        {
+          "id": "aut-giz",
+          "cor": "Giz",
+          "arquivo": "aut-tshirt.png",
+          "apelidos": [
+            "chalk"
+          ]
+        }
+      ],
+      "variantes": [
+        {
+          "id": "aut-oliva-p",
+          "cor": "Oliva",
+          "tamanho": "P",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-oliva"
+        },
+        {
+          "id": "aut-oliva-m",
+          "cor": "Oliva",
+          "tamanho": "M",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-oliva"
+        },
+        {
+          "id": "aut-oliva-g",
+          "cor": "Oliva",
+          "tamanho": "G",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-oliva"
+        },
+        {
+          "id": "aut-oliva-gg",
+          "cor": "Oliva",
+          "tamanho": "GG",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-oliva"
+        },
+        {
+          "id": "aut-gelo-p",
+          "cor": "Gelo",
+          "tamanho": "P",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-gelo"
+        },
+        {
+          "id": "aut-gelo-m",
+          "cor": "Gelo",
+          "tamanho": "M",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-gelo"
+        },
+        {
+          "id": "aut-gelo-g",
+          "cor": "Gelo",
+          "tamanho": "G",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-gelo"
+        },
+        {
+          "id": "aut-gelo-gg",
+          "cor": "Gelo",
+          "tamanho": "GG",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-gelo"
+        },
+        {
+          "id": "aut-azul-p",
+          "cor": "Azul",
+          "tamanho": "P",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-azul"
+        },
+        {
+          "id": "aut-azul-m",
+          "cor": "Azul",
+          "tamanho": "M",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-azul"
+        },
+        {
+          "id": "aut-azul-g",
+          "cor": "Azul",
+          "tamanho": "G",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-azul"
+        },
+        {
+          "id": "aut-azul-gg",
+          "cor": "Azul",
+          "tamanho": "GG",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-azul"
+        },
+        {
+          "id": "aut-areia-p",
+          "cor": "Areia",
+          "tamanho": "P",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-areia"
+        },
+        {
+          "id": "aut-areia-m",
+          "cor": "Areia",
+          "tamanho": "M",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-areia"
+        },
+        {
+          "id": "aut-areia-g",
+          "cor": "Areia",
+          "tamanho": "G",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-areia"
+        },
+        {
+          "id": "aut-areia-gg",
+          "cor": "Areia",
+          "tamanho": "GG",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-areia"
+        },
+        {
+          "id": "aut-grafite-p",
+          "cor": "Grafite",
+          "tamanho": "P",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-grafite"
+        },
+        {
+          "id": "aut-grafite-m",
+          "cor": "Grafite",
+          "tamanho": "M",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-grafite"
+        },
+        {
+          "id": "aut-grafite-g",
+          "cor": "Grafite",
+          "tamanho": "G",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-grafite"
+        },
+        {
+          "id": "aut-grafite-gg",
+          "cor": "Grafite",
+          "tamanho": "GG",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-grafite"
+        },
+        {
+          "id": "aut-giz-p",
+          "cor": "Giz",
+          "tamanho": "P",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-giz"
+        },
+        {
+          "id": "aut-giz-m",
+          "cor": "Giz",
+          "tamanho": "M",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-giz"
+        },
+        {
+          "id": "aut-giz-g",
+          "cor": "Giz",
+          "tamanho": "G",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-giz"
+        },
+        {
+          "id": "aut-giz-gg",
+          "cor": "Giz",
+          "tamanho": "GG",
+          "preco_centavos": 6000,
+          "disponivel": 8,
+          "imagem_id": "aut-giz"
+        }
+      ]
+    }
+  ]
+}

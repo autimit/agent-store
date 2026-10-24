@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="agent-store. Uma seleção de camisetas essenciais.">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#E8E4DE">
+  <title>agent-store — Camisetas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E8E4DE'/%3E%3Ctext x='7' y='24' font-family='sans-serif' font-size='25' fill='%23111111'%3Ea%3C/text%3E%3C/svg%3E">
+  <link rel="preload" href="/assets/inter-regular-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/inter-medium-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/store.css">
+  <script src="/assets/store.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#products">Ir para os produtos</a>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="agent-store, início">agent-store</a>
+    <button class="shopping-bag" id="open-bag" type="button" aria-label="Abrir sacola, 0 itens" aria-haspopup="dialog" aria-controls="bag-dialog">
+      <svg width="23" height="25" viewBox="0 0 24 26" fill="none" aria-hidden="true"><path d="M5 8.5h14l1 14H4l1-14Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M8 9V6.5a4 4 0 0 1 8 0V9" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg>
+      <span class="bag-count" id="bag-count" aria-hidden="true">0</span>
+      </button>
+    <span class="sr-only" id="bag-status" role="status" aria-live="polite" aria-atomic="true">Sacola vazia.</span>
+  </header>
+  <main id="products" class="product-grid" aria-label="Camisetas">
+    <h1 class="sr-only">Camisetas AUT</h1>
+    <a class="product-card product-link" data-image-id="aut-oliva" href="/produto/aut-tshirt?cor=aut-oliva" aria-label="Ver AUT T-SHIRT, Oliva"><div class="product-image"><img src="/assets/t-shirt.png" alt="Camiseta branca AUT vista de costas, referência da opção Oliva" width="600" height="750" fetchpriority="high"></div>
+      <div class="product-info"><div class="product-title-row"><h2>AUT T-SHIRT</h2><span class="product-price">R$ 60,00</span></div><p class="product-color">Oliva</p></div>
+    </a>
+    <a class="product-card product-link" data-image-id="aut-gelo" href="/produto/aut-tshirt?cor=aut-gelo" aria-label="Ver AUT T-SHIRT, Gelo"><div class="product-image"><img src="/assets/t-shirt.png" alt="Camiseta branca AUT vista de costas, referência da opção Gelo" width="600" height="750"></div>
+      <div class="product-info"><div class="product-title-row"><h2>AUT T-SHIRT</h2><span class="product-price">R$ 60,00</span></div><p class="product-color">Gelo</p></div>
+    </a>
+    <a class="product-card product-link" data-image-id="aut-azul" href="/produto/aut-tshirt?cor=aut-azul" aria-label="Ver AUT T-SHIRT, Azul"><div class="product-image"><img src="/assets/t-shirt.png" alt="Camiseta branca AUT vista de costas, referência da opção Azul" width="600" height="750"></div>
+      <div class="product-info"><div class="product-title-row"><h2>AUT T-SHIRT</h2><span class="product-price">R$ 60,00</span></div><p class="product-color">Azul</p></div>
+    </a>
+    <a class="product-card product-link" data-image-id="aut-areia" href="/produto/aut-tshirt?cor=aut-areia" aria-label="Ver AUT T-SHIRT, Areia"><div class="product-image"><img src="/assets/t-shirt.png" alt="Camiseta branca AUT vista de costas, referência da opção Areia" width="600" height="750" loading="lazy"></div>
+      <div class="product-info"><div class="product-title-row"><h2>AUT T-SHIRT</h2><span class="product-price">R$ 60,00</span></div><p class="product-color">Areia</p></div>
+    </a>
+    <a class="product-card product-link" data-image-id="aut-grafite" href="/produto/aut-tshirt?cor=aut-grafite" aria-label="Ver AUT T-SHIRT, Grafite"><div class="product-image"><img src="/assets/t-shirt.png" alt="Camiseta branca AUT vista de costas, referência da opção Grafite" width="600" height="750" loading="lazy"></div>
+      <div class="product-info"><div class="product-title-row"><h2>AUT T-SHIRT</h2><span class="product-price">R$ 60,00</span></div><p class="product-color">Grafite</p></div>
+    </a>
+    <a class="product-card product-link" data-image-id="aut-giz" href="/produto/aut-tshirt?cor=aut-giz" aria-label="Ver AUT T-SHIRT, Giz"><div class="product-image"><img src="/assets/t-shirt.png" alt="Camiseta branca AUT vista de costas, referência da opção Giz" width="600" height="750" loading="lazy"></div>
+      <div class="product-info"><div class="product-title-row"><h2>AUT T-SHIRT</h2><span class="product-price">R$ 60,00</span></div><p class="product-color">Giz</p></div>
+    </a>
+  </main>
+  <dialog id="bag-dialog" class="bag-dialog" aria-labelledby="bag-title">
+    <div class="sheet-header"><div><p class="sheet-eyebrow" id="sheet-step">01 / SUA SACOLA</p><h2 id="bag-title" tabindex="-1">Sua sacola</h2></div><button type="button" class="close-sheet" id="close-bag" aria-label="Fechar sacola"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div>
+    <div id="sheet-content" class="sheet-content"></div>
+    <div id="sheet-actions" class="sheet-actions"></div>
+    <p id="sheet-error" class="sheet-error" role="alert"></p>
+  </dialog>
+</body>
+</html>

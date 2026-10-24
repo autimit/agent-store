@@ -1,0 +1,1150 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Agent Store — API de demonstração",
+    "version": "0.3.0",
+    "description": "Loja fictícia da Autimit. Produtos, valores e prazos demonstrativos; sem cobrança ou entrega real. Preços em centavos BRL. Cote frete pelo CEP e inclua shipping e delivery ao criar checkout; o backend recalcula os valores. Use dados de contato/endereço fictícios. Sem MCP/A2A nesta versão."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Origem desta instância"
+    }
+  ],
+  "paths": {
+    "/api/v1/store": {
+      "get": {
+        "operationId": "getStore",
+        "summary": "Identidade e políticas da loja demonstrativa.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Store"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "operationId": "listProducts",
+        "summary": "Catálogo com disponibilidade atual; sem reserva.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "products": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Product"
+                      }
+                    },
+                    "demo": {
+                      "const": true
+                    },
+                    "currency": {
+                      "const": "BRL"
+                    },
+                    "stock_checked_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products/{id}": {
+      "get": {
+        "operationId": "getProduct",
+        "summary": "Produto com variantes e imagens.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/variants/{id}/availability": {
+      "get": {
+        "operationId": "getAvailability",
+        "summary": "Confere uma variante, sem reservar.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "quantity",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Availability"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/images/{id}": {
+      "get": {
+        "operationId": "getProductImage",
+        "summary": "Imagem cadastrada, sem seleção de caminho pelo cliente.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PNG original",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Imagem não encontrada"
+          }
+        }
+      }
+    },
+    "/api/v1/quotes": {
+      "post": {
+        "operationId": "quoteCart",
+        "summary": "Cota itens e frete opcional pelo servidor, sem reservar. Sem seleção de frete, shipping_required=true e o total é parcial.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Quote"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checkouts": {
+      "post": {
+        "operationId": "createCheckout",
+        "summary": "Após confirmação do usuário, cria checkout com contato, endereço e frete escolhido. CEP da entrega deve coincidir com o da cotação. Reserva estoque por 15 minutos. Repetir chave e corpo recupera o mesmo checkout.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Checkout"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Criado; retorna access_token. Replay retorna 200 e Idempotency-Replayed: true. A chave possui retenção durante a vida do banco de demonstração.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Checkout"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checkouts/{id}": {
+      "get": {
+        "operationId": "getCheckout",
+        "summary": "Consulta apenas com o token do checkout.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Checkout"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "checkoutToken": []
+          }
+        ]
+      }
+    },
+    "/api/v1/checkouts/{id}/cancel": {
+      "post": {
+        "operationId": "cancelCheckout",
+        "summary": "Cancela checkout aberto e libera a reserva. Repetição não duplica estoque.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Checkout"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "checkoutToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checkouts/{id}/simulate-payment": {
+      "post": {
+        "operationId": "simulatePayment",
+        "summary": "Somente demonstração e com autorização explícita do usuário: conclui pedido fictício. Não transfere dinheiro. Repetição retorna o mesmo pedido.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Checkout"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "checkoutToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shipping-quotes": {
+      "post": {
+        "operationId": "quoteShipping",
+        "summary": "Cota fretes padrão e expresso fictícios pelo CEP, sem reservar. Não consulta transportadoras nem verifica a existência do CEP.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShippingQuoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Opções e prazos simulados em dias úteis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShippingQuote"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "CEP, itens ou disponibilidade inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Item": {
+        "type": "object",
+        "properties": {
+          "variant_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          }
+        },
+        "required": [
+          "variant_id",
+          "quantity"
+        ],
+        "additionalProperties": false
+      },
+      "QuoteRequest": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "minItems": 1,
+            "maxItems": 10
+          },
+          "shipping": {
+            "$ref": "#/components/schemas/ShippingSelection"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "CheckoutRequest": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "minItems": 1,
+            "maxItems": 10
+          },
+          "payment_method": {
+            "type": "string",
+            "enum": [
+              "pix",
+              "card"
+            ]
+          },
+          "shipping": {
+            "$ref": "#/components/schemas/ShippingSelection"
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/Delivery"
+          }
+        },
+        "required": [
+          "items",
+          "payment_method",
+          "shipping",
+          "delivery"
+        ],
+        "additionalProperties": false
+      },
+      "Image": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cor": {
+            "type": "string"
+          },
+          "apelidos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cor",
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "Variant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cor": {
+            "type": "string"
+          },
+          "tamanho": {
+            "type": "string"
+          },
+          "preco_centavos": {
+            "type": "integer"
+          },
+          "disponivel": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "imagem_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cor",
+          "tamanho",
+          "preco_centavos",
+          "disponivel",
+          "imagem_id"
+        ],
+        "additionalProperties": false
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "categoria": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "imagens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Image"
+            }
+          },
+          "variantes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Variant"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "nome",
+          "imagens",
+          "variantes"
+        ],
+        "additionalProperties": false
+      },
+      "Line": {
+        "type": "object",
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "unit_price_cents": {
+            "type": "integer"
+          },
+          "total_cents": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "variant_id",
+          "quantity",
+          "unit_price_cents",
+          "total_cents"
+        ],
+        "additionalProperties": false
+      },
+      "Quote": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Line"
+            }
+          },
+          "subtotal_cents": {
+            "type": "integer"
+          },
+          "shipping_cents": {
+            "type": "integer"
+          },
+          "total_cents": {
+            "type": "integer"
+          },
+          "currency": {
+            "const": "BRL"
+          },
+          "demo": {
+            "const": true
+          },
+          "shipping_required": {
+            "type": "boolean"
+          },
+          "shipping_option": {
+            "$ref": "#/components/schemas/ShippingOption"
+          },
+          "postal_code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "subtotal_cents",
+          "shipping_cents",
+          "total_cents",
+          "currency",
+          "demo",
+          "shipping_required"
+        ],
+        "additionalProperties": false
+      },
+      "Checkout": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "access_token": {
+            "type": "string",
+            "description": "Retornado apenas na criação ou replay idempotente. Guarde como segredo de acesso ao checkout."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "completed",
+              "canceled",
+              "expired"
+            ]
+          },
+          "payment_method": {
+            "type": "string",
+            "enum": [
+              "pix",
+              "card"
+            ]
+          },
+          "payment_status": {
+            "type": "string",
+            "enum": [
+              "simulated_pending",
+              "simulated_approved",
+              "simulated_canceled",
+              "simulated_expired"
+            ]
+          },
+          "quote": {
+            "$ref": "#/components/schemas/Quote"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "real_payment": {
+            "const": false
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/Delivery"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "payment_method",
+          "payment_status",
+          "quote",
+          "created_at",
+          "expires_at",
+          "real_payment"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          },
+          "demo": {
+            "const": true
+          }
+        },
+        "required": [
+          "error",
+          "demo"
+        ],
+        "additionalProperties": false
+      },
+      "Availability": {
+        "type": "object",
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "available": {
+            "type": "integer"
+          },
+          "requested": {
+            "type": "integer"
+          },
+          "can_fulfill": {
+            "type": "boolean"
+          },
+          "unit_price_cents": {
+            "type": "integer"
+          },
+          "subtotal_cents": {
+            "type": "integer"
+          },
+          "currency": {
+            "const": "BRL"
+          },
+          "demo": {
+            "const": true
+          },
+          "reserved": {
+            "const": false
+          }
+        },
+        "required": [
+          "variant_id",
+          "available",
+          "can_fulfill",
+          "unit_price_cents",
+          "currency",
+          "demo",
+          "reserved"
+        ],
+        "additionalProperties": false
+      },
+      "Store": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "demo": {
+            "const": true
+          },
+          "currency": {
+            "const": "BRL"
+          },
+          "checkout_mode": {
+            "const": "simulation"
+          },
+          "shipping": {
+            "type": "string"
+          },
+          "reservation_minutes": {
+            "type": "integer"
+          },
+          "payment_methods": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "policies": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "demo",
+          "currency",
+          "checkout_mode",
+          "policies"
+        ],
+        "additionalProperties": false
+      },
+      "ShippingSelection": {
+        "type": "object",
+        "properties": {
+          "postal_code": {
+            "type": "string",
+            "pattern": "^[0-9]{5}-?[0-9]{3}$"
+          },
+          "service_id": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "express"
+            ]
+          }
+        },
+        "required": [
+          "postal_code",
+          "service_id"
+        ],
+        "additionalProperties": false
+      },
+      "ShippingOption": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price_cents": {
+            "type": "integer"
+          },
+          "min_business_days": {
+            "type": "integer"
+          },
+          "max_business_days": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "price_cents",
+          "min_business_days",
+          "max_business_days"
+        ],
+        "additionalProperties": false
+      },
+      "ShippingQuote": {
+        "type": "object",
+        "properties": {
+          "postal_code": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShippingOption"
+            }
+          },
+          "currency": {
+            "const": "BRL"
+          },
+          "demo": {
+            "const": true
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "postal_code",
+          "options",
+          "currency",
+          "demo",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "Delivery": {
+        "type": "object",
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 120
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 25
+          },
+          "postal_code": {
+            "type": "string",
+            "pattern": "^[0-9]{5}-?[0-9]{3}$"
+          },
+          "street": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 160
+          },
+          "number": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "complement": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 120
+          },
+          "neighborhood": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "city": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "state": {
+            "type": "string",
+            "description": "UF brasileira com duas letras.",
+            "enum": [
+              "AC",
+              "AL",
+              "AP",
+              "AM",
+              "BA",
+              "CE",
+              "DF",
+              "ES",
+              "GO",
+              "MA",
+              "MT",
+              "MS",
+              "MG",
+              "PA",
+              "PB",
+              "PR",
+              "PE",
+              "PI",
+              "RJ",
+              "RN",
+              "RS",
+              "RO",
+              "RR",
+              "SC",
+              "SP",
+              "SE",
+              "TO"
+            ]
+          }
+        },
+        "required": [
+          "full_name",
+          "email",
+          "postal_code",
+          "street",
+          "number",
+          "neighborhood",
+          "city",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "ShippingQuoteRequest": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "minItems": 1,
+            "maxItems": 10
+          },
+          "postal_code": {
+            "type": "string",
+            "pattern": "^[0-9]{5}-?[0-9]{3}$"
+          }
+        },
+        "required": [
+          "items",
+          "postal_code"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "checkoutToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "access_token retornado na criação; autoriza apenas o checkout correspondente."
+      }
+    }
+  }
+}

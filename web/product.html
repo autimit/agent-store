@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="agent-store. Uma seleção de camisetas essenciais.">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#E8E4DE">
+  <title>AUT T-SHIRT — agent-store</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E8E4DE'/%3E%3Ctext x='7' y='24' font-family='sans-serif' font-size='25' fill='%23111111'%3Ea%3C/text%3E%3C/svg%3E">
+  <link rel="preload" href="/assets/inter-regular-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/inter-medium-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/store.css">
+  <script src="/assets/store.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#product-detail">Ir para o produto</a>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="agent-store, início">agent-store</a>
+    <button class="shopping-bag" id="open-bag" type="button" aria-label="Abrir sacola, 0 itens" aria-haspopup="dialog" aria-controls="bag-dialog">
+      <svg width="23" height="25" viewBox="0 0 24 26" fill="none" aria-hidden="true"><path d="M5 8.5h14l1 14H4l1-14Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/><path d="M8 9V6.5a4 4 0 0 1 8 0V9" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg>
+      <span class="bag-count" id="bag-count" aria-hidden="true">0</span>
+      </button>
+    <span class="sr-only" id="bag-status" role="status" aria-live="polite" aria-atomic="true">Sacola vazia.</span>
+  </header>
+  <main id="product-detail" class="product-detail">
+    <a class="back-to-store" href="/">← Todas as camisetas</a>
+    <div class="detail-layout">
+      <div class="detail-image"><img id="detail-image" src="/assets/t-shirt.png" alt="Camiseta AUT, imagem de referência ilustrativa" width="600" height="750" fetchpriority="high"></div>
+      <section class="detail-info" aria-labelledby="detail-title">
+        <p class="detail-category">ESSENCIAIS / AUT</p><h1 id="detail-title">AUT T-SHIRT</h1>
+        <p class="detail-price" id="detail-price">R$ 60,00</p>
+        <p class="detail-description">O essencial, do seu jeito. Escolha a cor, encontre seu tamanho e confira as opções de entrega.</p>
+        <fieldset class="detail-fieldset"><legend>Cor <span id="detail-color-name">Oliva</span></legend><div class="detail-colors" id="detail-colors"></div></fieldset>
+        <fieldset class="detail-fieldset"><legend>Tamanho</legend><div class="detail-sizes" id="detail-sizes"></div></fieldset>
+        <div class="detail-quantity-row"><label for="detail-quantity">Quantidade</label><input type="number" id="detail-quantity" value="1" min="1" max="10" inputmode="numeric"></div>
+        <p class="detail-stock" id="detail-stock" role="status">Carregando disponibilidade…</p>
+        <button class="primary-pill" id="detail-add" type="button" disabled>Escolha seu tamanho</button>
+        <button class="secondary-pill" id="detail-resume" type="button" hidden>Retomar compra em andamento</button>
+        <p class="detail-message" id="detail-message" role="status"></p>
+        <section class="detail-shipping" aria-labelledby="shipping-title"><h2 id="shipping-title">Entrega</h2><form id="detail-shipping-form"><label for="detail-postal-code">Seu CEP</label><div class="postal-row"><input id="detail-postal-code" name="postal_code" type="text" inputmode="numeric" autocomplete="postal-code" placeholder="00000-000" maxlength="9" pattern="[0-9]{5}-?[0-9]{3}" required><button class="secondary-pill" type="submit">Calcular frete</button></div></form><div id="detail-shipping-options" class="detail-shipping-options" role="status"></div><p class="detail-note">Frete e prazos simulados. Sem cobrança ou entrega real.</p></section>
+        <details class="product-information"><summary>Sobre esta peça <span aria-hidden="true">+</span></summary><p>Produto conceitual AUT para a demonstração da agent-store. As seis opções usam a mesma fotografia ilustrativa. Composição, medidas e materiais não foram cadastrados.</p></details>
+        <details class="product-information"><summary>Sobre a demonstração <span aria-hidden="true">+</span></summary><p>Você pode escolher tamanho, calcular frete, preencher um endereço fictício e concluir um pedido de teste com Pix ou cartão simulado. Nenhum valor será cobrado ou produto enviado.</p></details>
+      </section>
+    </div>
+  </main>
+  <dialog id="bag-dialog" class="bag-dialog" aria-labelledby="bag-title">
+    <div class="sheet-header"><div><p class="sheet-eyebrow" id="sheet-step">01 / SUA SACOLA</p><h2 id="bag-title" tabindex="-1">Sua sacola</h2></div><button type="button" class="close-sheet" id="close-bag" aria-label="Fechar sacola"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div>
+    <div id="sheet-content" class="sheet-content"></div>
+    <div id="sheet-actions" class="sheet-actions"></div>
+    <p id="sheet-error" class="sheet-error" role="alert"></p>
+  </dialog>
+</body>
+</html>

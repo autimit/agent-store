@@ -1,0 +1,15 @@
+.git
+.github
+.env
+.env.*
+.runtime
+.railway
+bin
+node_modules
+test-results
+docs
+scripts
+*.db
+*.db-*
+*.sqlite*
+*.log
