@@ -1,10 +1,10 @@
 # agent-store
 
-Loja de demonstração da Autimit, em Go, com vitrine minimalista de camisetas, API própria e checkout local. **Nenhuma cobrança ou entrega real.**
+Loja de demonstração da Autimit, com frontend React/Vite usando o design system Glaze, API em Go e checkout local. **Nenhuma cobrança ou entrega real.**
 
 ## Rodar
 
-Requer Go 1.26+. O script também encontra o runtime temporário desta máquina em `/tmp/haseo-bootstrap/go`. Em outra máquina, instale Go ou defina `AGENT_STORE_GO_BIN`.
+Requer Node.js 24+ e Go 1.26+ no PATH, ou `AGENT_STORE_GO_BIN` apontando para o executável Go.
 
 ```bash
 cd agent-store
@@ -39,9 +39,19 @@ Se a resposta da criação for perdida, o carrinho fica bloqueado e a próxima t
 
 ## Visual e movimento
 
-Inter local, fundo #E8E4DE, cards brancos de 16 px, botões em pílula. Grid 3/2/1 colunas. O card é clicável por mouse, teclado e toque. A adição acontece somente na página de detalhes, após selecionar tamanho. Sacola com diálogo nativo, foco por teclado e Escape.
+Glaze oficial do design.how: tema preto e branco, fonte Geist local como fallback previsto pelo sistema, tokens semânticos, cards com shell, campos em pílula e uma ação primária por grupo. Grid 3/2/1 colunas. Os cards levam aos detalhes; a adição só ocorre após escolher tamanho.
 
-Entrada escalonada dos cards, zoom 1.03, feedback na sacola, abertura/fechamento do painel e transições entre etapas. `prefers-reduced-motion` reduz as animações.
+Sacola e checkout usam Sheet controlado do Glaze, com foco, Escape, isolamento do conteúdo de fundo e transições que respeitam movimento reduzido. As regras de compra, contratos HTTP, preços e armazenamento continuam no backend Go.
+
+O tema é importado em `src/main.tsx`, com `class="glaze"` no body e `GlazePortalProvider` para overlays. As instruções estão em `.agents/skills/glaze/SKILL.md`; toda alteração de UI deve segui-las. Componentes ficam em `src/components/glaze` e a camada de compra em `src/lib/commerce.ts`.
+
+```bash
+npm ci
+npm run build
+npx eslint -c glaze.eslint.config.mjs .
+```
+
+O build gera `web/dist`, incorporado ao binário Go. O Dockerfile compila frontend e backend em estágios separados; Node não roda no servidor final. `./dev` faz o build do frontend antes de iniciar Go.
 
 ## Frete e entrega
 
@@ -90,9 +100,10 @@ python3 scripts/agent-client.py --simulate-purchase
 ## Verificar
 
 ```bash
+npm run build
+npx eslint -c glaze.eslint.config.mjs .
 go test ./...
 go vet ./...
-node --check web/store.js
 ```
 
 Os testes de navegador requerem Playwright e Chromium. Usam uma instância com banco descartável novo, na porta 8093, e concluem pedidos simulados; não rodar contra a demonstração principal sem intenção de consumir seu estoque.
@@ -116,4 +127,4 @@ MVP local, sem cobrança real, login de cliente, entrega, integração MCP/A2A o
 
 Para operação pública, ainda são necessários autenticação/autorizações, proteção contra abuso, HTTPS, operação de dados e integração/conciliacão do provedor financeiro e da entrega.
 
-Fontes Inter e Manrope sob SIL OFL em `web/Inter-OFL.txt` e `web/OFL.txt`. Contrato baseado em [OpenAPI 3.1.1](https://spec.openapis.org/oas/v3.1.1.html).
+Fonte Geist sob SIL OFL em `public/assets/Geist-OFL.txt`. Contrato baseado em [OpenAPI 3.1.1](https://spec.openapis.org/oas/v3.1.1.html).

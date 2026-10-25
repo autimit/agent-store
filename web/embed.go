@@ -2,5 +2,5 @@ package web
 
 import "embed"
 
-//go:embed *.html *.css *.js *.woff2 *.png openapi.json
+//go:embed dist openapi.json t-shirt.png
 var Files embed.FS

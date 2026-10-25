@@ -10,6 +10,8 @@ if [ -z "$task_go_bin" ]; then
     export GOCACHE="${GOCACHE:-/tmp/haseo-bootstrap/cache}"
   else printf '%s\n' 'Instale Go 1.26+ ou configure AGENT_STORE_GO_BIN.' >&2; exit 1; fi
 fi
+if [ ! -d node_modules ]; then npm ci; fi
+npm run build
 mkdir -p bin
 "$task_go_bin" build -o bin/agent-store ./cmd/agent-store
 exec ./bin/agent-store "$@"

@@ -13,3 +13,9 @@ scripts
 *.db-*
 *.sqlite*
 *.log
+
+.design-system
+.ui-review
+.agents
+.claude
+web/dist

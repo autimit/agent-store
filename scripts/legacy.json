@@ -1,0 +1,29 @@
+{
+  "scan": [
+    "src"
+  ],
+  "ignore": [
+    "**/*.test.*",
+    "src/components/glaze/ui/**",
+    "src/components/glaze/ai/**",
+    "src/components/glaze/icon.tsx",
+    "src/lib/glaze/**"
+  ],
+  "tokenFiles": [
+    "src/index.css",
+    "src/components/glaze/tokens.css",
+    "src/components/glaze/base.css",
+    "src/components/glaze/styles.css"
+  ],
+  "legacyImports": [
+    "store\\.css",
+    "store\\.js",
+    "commerce\\.css",
+    "@/components/ui/",
+    "@/lib/utils"
+  ],
+  "systemImports": [
+    "^@/components/glaze/",
+    "^@/lib/glaze/"
+  ]
+}

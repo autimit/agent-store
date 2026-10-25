@@ -27,7 +27,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml")
-		io.WriteString(w, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#212b24"/><path d="M8 23 16 7l8 16h-5l-3-6-3 6" fill="#dbeaaf"/></svg>`)
+		io.WriteString(w, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text x="7" y="24" font-family="sans-serif" font-size="28" fill="currentColor">a</text></svg>`)
 	})
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		respond(w, 200, map[string]any{"status": "ok", "demo": true})
@@ -58,8 +58,13 @@ func (s *Server) Handler() http.Handler {
 		io.WriteString(w, "User-agent: *\nDisallow: /\n")
 	})
 	mux.HandleFunc("GET /{$}", s.index)
-	mux.HandleFunc("GET /agents", func(w http.ResponseWriter, r *http.Request) { serveEmbedded(w, r, "agents.html") })
-	assets, _ := fs.Sub(web.Files, ".")
+	mux.HandleFunc("GET /agents", func(w http.ResponseWriter, r *http.Request) { serveEmbedded(w, r, "dist/index.html") })
+	assets, _ := fs.Sub(web.Files, "dist/assets")
+	mux.HandleFunc("GET /assets/t-shirt.png", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		image, _ := web.Files.ReadFile("t-shirt.png")
+		w.Write(image)
+	})
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assets))))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fail(w, &store.Fault{Code: "not_found", Message: "Rota não encontrada.", Status: 404})
@@ -97,7 +102,7 @@ func serveEmbedded(w http.ResponseWriter, r *http.Request, name string) {
 	w.Write(data)
 }
 func (s *Server) index(w http.ResponseWriter, r *http.Request) {
-	serveEmbedded(w, r, "index.html")
+	serveEmbedded(w, r, "dist/index.html")
 }
 func (s *Server) products(w http.ResponseWriter, r *http.Request) {
 	p, err := s.Store.Products(r.Context(), r.URL.Query().Get("q"))
@@ -275,5 +280,5 @@ func (s *Server) productPage(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	serveEmbedded(w, r, "product.html")
+	serveEmbedded(w, r, "dist/index.html")
 }

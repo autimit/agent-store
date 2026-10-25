@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"autimit.local/agent-store/internal/store"
+	"autimit.local/agent-store/web"
 )
 
 func testAPI(t *testing.T) http.Handler {
@@ -112,7 +113,7 @@ func TestRejectsClientPricesUnknownFieldsAndCrossOrigin(t *testing.T) {
 }
 func TestPublicDiscoveryAndAssets(t *testing.T) {
 	h := testAPI(t)
-	for _, path := range []string{"/", "/produto/aut-tshirt", "/agents", "/openapi.json", "/llms.txt", "/api/v1/products", "/api/v1/store", "/api/v1/images/sculpt-oliva", "/assets/store.css", "/assets/store.js", "/assets/inter-regular-latin.woff2", "/assets/t-shirt.png"} {
+	for _, path := range []string{"/", "/produto/aut-tshirt", "/agents", "/openapi.json", "/llms.txt", "/api/v1/products", "/api/v1/store", "/api/v1/images/sculpt-oliva", "/assets/t-shirt.png"} {
 		w := request(h, "GET", path, "", "", "")
 		if w.Code != 200 {
 			t.Errorf("%s: %d", path, w.Code)
@@ -121,7 +122,20 @@ func TestPublicDiscoveryAndAssets(t *testing.T) {
 			t.Error("demo indexing not blocked")
 		}
 	}
+	assets, err := web.Files.ReadDir("dist/assets")
+	if err != nil || len(assets) == 0 {
+		t.Fatal("compiled storefront assets missing")
+	}
+	for _, asset := range assets {
+		w := request(h, "GET", "/assets/"+asset.Name(), "", "", "")
+		if w.Code != 200 {
+			t.Errorf("compiled asset %s: %d", asset.Name(), w.Code)
+		}
+	}
 	w := request(h, "GET", "/", "", "", "")
+	if !strings.Contains(w.Body.String(), `class="glaze"`) {
+		t.Fatal("Glaze root scope missing")
+	}
 	if strings.Contains(w.Body.String(), "__PRODUCT_JSON_LD__") || strings.Contains(w.Body.String(), "sculpt-bordo") {
 		t.Fatal("old catalog metadata leaked into the new storefront")
 	}

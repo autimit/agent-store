@@ -1,0 +1,20 @@
+import {Card, CardHeader, CardTitle, CardDescription, CardLink, CardContent} from '@/components/glaze/ui/card';
+import {CodeBlock} from '@/components/glaze/ui/code-block';
+import {Alert, AlertTitle, AlertDescription} from '@/components/glaze/ui/alert';
+
+export function AgentDocs() {
+  return <main id="products" className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6">
+    <div className="flex flex-col gap-4"><h1 className="type-title">Uma loja. Duas entradas.</h1><p className="type-body text-text-2">A pessoa escolhe pela vitrine. Um agente pode consultar o mesmo catálogo e iniciar um checkout pela API. Os dois caminhos passam pelas mesmas regras de estoque e preço.</p></div>
+    <Alert><AlertTitle>Loja de demonstração</AlertTitle><AlertDescription>Nenhuma cobrança ou entrega real.</AlertDescription></Alert>
+    <section className="flex flex-col gap-4"><h2 className="type-heading">Comece pelo contrato.</h2><p className="type-body text-text-2">Interface HTTP documentada em OpenAPI 3.1. Os preços são inteiros em centavos de BRL. Consulte disponibilidade antes de criar um checkout.</p><div className="grid gap-3 sm:grid-cols-2">{[['Contrato OpenAPI','/openapi.json'],['Identidade e políticas','/api/v1/store'],['Guia textual','/llms.txt'],['Catálogo JSON','/api/v1/products']].map(([title,href]) => <Card key={href}><CardHeader><CardTitle><CardLink href={href}>{title}</CardLink></CardTitle><CardDescription>Consultar documentação</CardDescription></CardHeader></Card>)}</div></section>
+    <section className="flex flex-col gap-4"><h2 className="type-heading">Da intenção ao pedido.</h2><Card><CardContent><ol className="flex list-decimal flex-col gap-4 ps-4 type-body-sm">
+      <li><strong>Descobrir.</strong> Consulte produtos, cores, imagens e tamanhos em <code>GET /api/v1/products</code>.</li>
+      <li><strong>Conferir.</strong> Use <code>{'GET /api/v1/variants/{id}/availability'}</code>. A consulta não reserva.</li>
+      <li><strong>Cotar.</strong> Calcule frete com <code>POST /api/v1/shipping-quotes</code> usando itens e CEP. Envie itens e a opção <code>shipping</code> para <code>POST /api/v1/quotes</code>. O servidor calcula o preço.</li>
+      <li><strong>Confirmar com a pessoa.</strong> Só então crie o checkout com <code>POST /api/v1/checkouts</code> e <code>Idempotency-Key</code>, incluindo <code>shipping</code> e <code>delivery</code> com contato e endereço fictícios. O CEP de entrega deve ser o mesmo usado para cotar. Reserva de 15 minutos.</li>
+      <li><strong>Testar a conclusão.</strong> Com autorização explícita para a simulação, envie <code>{'POST /api/v1/checkouts/{id}/simulate-payment'}</code>. Isso cria um pedido fictício, sem movimentar dinheiro.</li>
+    </ol></CardContent></Card><p className="type-body-sm text-text-2">Guarde o <code>access_token</code> retornado pela criação. As operações do checkout exigem <code>Authorization: Bearer &lt;access_token&gt;</code>. Reutilize a chave de idempotência e o mesmo corpo se houver falha de rede na criação.</p></section>
+    <section className="flex flex-col gap-4"><h2 className="type-heading">Um primeiro pedido HTTP.</h2><CodeBlock variant="command" code={'$ curl http://127.0.0.1:8091/api/v1/products\n\n$ curl -X POST http://127.0.0.1:8091/api/v1/quotes \\\n  -H \'Content-Type: application/json\' \\\n  -d \'{"items":[{"variant_id":"aut-oliva-m","quantity":1}]}\''}/></section>
+    <section className="flex flex-col gap-4"><h2 className="type-heading">O que este experimento prova.</h2><p className="type-body text-text-2">Uma interface independente de modelo, um estoque compartilhado entre canais, reserva transacional e conclusão idempotente de uma compra simulada. Pedidos e reservas sobrevivem ao reinício do processo.</p><p className="type-body text-text-2">Esta entrega oferece uma API HTTP. Não inclui servidor MCP, A2A, descoberta automática em agentes pessoais, pagamento real ou comprovação de operação em escala. O Haseo poderá usar essa API por um conector.</p></section>
+  </main>;
+}

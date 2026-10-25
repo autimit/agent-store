@@ -11,3 +11,6 @@ test-results/
 *.sqlite*
 *.log
 .DS_Store
+
+web/dist/
+.ui-review/
