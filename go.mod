@@ -1,6 +1,6 @@
 module autimit.local/agent-store
 
-go 1.26.0
+go 1.26.10
 
 require (
 	golang.org/x/text v0.43.0

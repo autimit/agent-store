@@ -14,3 +14,5 @@ test-results/
 
 web/dist/
 .ui-review/
+# Poppy validator test identity and results (private key)
+.poppy/

@@ -57,6 +57,8 @@ func run(addr, catalogPath, database string) error {
 		return err
 	}
 	api := &httpapi.Server{Store: s, ImageDir: filepath.Join(filepath.Dir(catalogPath), "images")}
+	api.AuthURL = strings.TrimRight(os.Getenv("AGENT_STORE_AUTH_URL"), "/")
+	api.PublicOrigin = strings.TrimRight(os.Getenv("AGENT_STORE_PUBLIC_ORIGIN"), "/")
 	server := &http.Server{Addr: addr, Handler: api.Handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 32 << 10}
 	done := make(chan error, 1)
 	go func() {

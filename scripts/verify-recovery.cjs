@@ -1,11 +1,13 @@
 // Deliberately loses HTTP responses against a disposable local demo database.
 const assert = require('node:assert/strict');
+const {registerAccount}=require('./auth-fixture.cjs');
 const { chromium } = require(process.env.PLAYWRIGHT_PACKAGE || 'playwright');
 const origin = process.env.STORE_URL || 'http://127.0.0.1:8093';
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, headless: true, args: ['--no-sandbox'] });
   try {
     const page = await browser.newPage({ viewport: { width: 1200, height: 950 } });
+    await registerAccount(page,origin);
     const errors = []; page.on('pageerror', e => errors.push(e.message));
     const availability = async () => (await (await page.request.get(origin + '/api/v1/variants/aut-azul-gg/availability')).json()).available;
     const before = await availability();
@@ -47,7 +49,7 @@ const origin = process.env.STORE_URL || 'http://127.0.0.1:8093';
     assert.equal(await page.locator('.order-reference code').getAttribute('data-order-id'), completed.order_id);
     assert.equal(await page.getByRole('alert').count(), 0, 'Successful payment reconciliation clears the error alert');
     assert.equal(await page.locator('#bag-count').textContent(), '0');
-    const repeated = await page.request.post(origin + '/api/v1/checkouts/' + original.id + '/simulate-payment', { headers: { Authorization: 'Bearer ' + original.access_token }, data: {} });
+    const repeated = await page.request.post(origin + '/api/v1/checkouts/' + original.id + '/simulate-payment', { headers: { Authorization: 'Bearer ' + original.access_token,Origin:origin }, data: {} });
     assert.equal((await repeated.json()).order_id, completed.order_id);
     assert.equal(await availability(), before - 1);
     assert.deepEqual(errors, []);

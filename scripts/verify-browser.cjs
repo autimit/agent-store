@@ -1,7 +1,9 @@
 // Run on a disposable database. Exercises a complete fictional shopping journey.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const {registerAccount}=require('./auth-fixture.cjs');
 const { chromium } = require(process.env.PLAYWRIGHT_PACKAGE || 'playwright');
+const screenshots=process.env.SCREENSHOT_DIR || '.ui-review/storefront';
 const origin = process.env.STORE_URL || 'http://127.0.0.1:8093';
 async function fillDelivery(page, payment = 'pix') {
   await page.locator('#delivery-full_name').fill('Cliente Demonstração');
@@ -21,9 +23,10 @@ async function fillDelivery(page, payment = 'pix') {
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, headless: true, args: ['--no-sandbox'] });
   try {
-    fs.mkdirSync('docs/screenshots', { recursive: true });
+    fs.mkdirSync(screenshots, { recursive: true });
     const errors = [];
     const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+    await registerAccount(page,origin);
     page.on('pageerror', e => errors.push(e.message));
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
     await page.goto(origin, { waitUntil: 'networkidle' });
@@ -41,7 +44,7 @@ async function fillDelivery(page, payment = 'pix') {
     const detailImage = await page.locator('#detail-image').boundingBox();
     assert(Math.abs(detailImage.width - detailImage.height) <= 1, 'Product details keep a square image');
     assert(await page.locator('#detail-add').isDisabled());
-    await page.waitForTimeout(350); await page.screenshot({ path: 'docs/screenshots/product-desktop.png', fullPage: true });
+    await page.waitForTimeout(350); await page.screenshot({ path: screenshots+'/product-desktop.png', fullPage: true });
     await page.getByRole('button', { name: 'Cor Azul', exact: true }).click();
     assert.match(page.url(), /cor=aut-azul/);
     await page.getByRole('button', { name: 'Cor Oliva', exact: true }).click();
@@ -79,14 +82,14 @@ async function fillDelivery(page, payment = 'pix') {
     await page.locator('#start-checkout:enabled').waitFor();
     assert.match(await page.locator('#delivery-totals .total-line strong').textContent(), /134,90/);
     await page.getByRole('radio', { name: /^Expresso/ }).click(); await page.getByRole('radio', { name: /^Expresso/, checked: true }).waitFor(); await page.locator('#start-checkout:enabled').waitFor();
-    await page.waitForTimeout(350); await page.screenshot({ path: 'docs/screenshots/delivery-desktop.png' });
+    await page.waitForTimeout(350); await page.screenshot({ path: screenshots+'/delivery-desktop.png' });
     await page.locator('#start-checkout').click(); await page.locator('#simulate-payment:enabled').waitFor();
     assert.match(await page.locator('.delivery-summary').textContent(), /Rua de Teste, 100/);
     assert.equal(await page.getByRole('dialog').count(), 1, 'The bag remains one scoped Glaze dialog');
     assert.match(await page.locator('.delivery-summary').textContent(), /Expresso/);
     assert.match(await page.locator('.total-line strong').textContent(), /144,90/);
     await page.reload({ waitUntil: 'networkidle' }); await page.locator('#open-bag').click(); await page.locator('#simulate-payment:enabled').waitFor();
-    await page.waitForTimeout(400); await page.screenshot({ path: 'docs/screenshots/checkout-shipping-desktop.png' });
+    await page.waitForTimeout(400); await page.screenshot({ path: screenshots+'/checkout-shipping-desktop.png' });
     await page.locator('#simulate-payment').click(); await page.getByText('Simulação concluída', { exact: true }).waitFor();
     const reference = await page.locator('.order-reference code').textContent(); assert.match(reference, /^AS-/);
     assert.equal(await page.locator('#bag-count').textContent(), '0');
@@ -101,17 +104,18 @@ async function fillDelivery(page, payment = 'pix') {
     await page.locator('#continue-shopping').click(); await page.getByRole('button', { name: 'Remover camiseta Giz', exact: true }).click();
     await page.getByText('Sua próxima escolha começa por aqui.', { exact: true }).waitFor();
     const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    await registerAccount(mobile,origin);
     mobile.on('pageerror', e => errors.push(e.message));
     await mobile.goto(origin, { waitUntil: 'networkidle' });
     assert.equal(await mobile.locator('.product-grid').evaluate(e => getComputedStyle(e).gridTemplateColumns.split(' ').length), 1);
     await Promise.all([mobile.waitForURL('**/produto/aut-tshirt?cor=aut-oliva'), mobile.locator('.product-card').first().tap()]); await mobile.waitForLoadState('networkidle');
     assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await mobile.getByRole('button', { name: 'Tamanho M', exact: true }).tap();
-    await mobile.screenshot({ path: 'docs/screenshots/product-mobile.png', fullPage: true });
+    await mobile.screenshot({ path: screenshots+'/product-mobile.png', fullPage: true });
     await mobile.locator('#detail-add').tap(); await mobile.locator('#continue-to-delivery:enabled').waitFor(); await mobile.locator('#continue-to-delivery').tap();
     await fillDelivery(mobile); await mobile.locator('#start-checkout').tap(); await mobile.locator('#simulate-payment:enabled').waitFor();
     assert.match(await mobile.locator('.total-line strong').textContent(), /74,90/);
-    await mobile.waitForTimeout(400); await mobile.screenshot({ path: 'docs/screenshots/checkout-shipping-mobile.png' });
+    await mobile.waitForTimeout(400); await mobile.screenshot({ path: screenshots+'/checkout-shipping-mobile.png' });
     await mobile.locator('#simulate-payment').tap(); await mobile.getByText('Simulação concluída', { exact: true }).waitFor();
     await mobile.setViewportSize({ width: 320, height: 740 }); assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await mobile.emulateMedia({ reducedMotion: 'reduce' }); await mobile.keyboard.press('Escape'); await mobile.locator('#bag-dialog').waitFor({ state: 'hidden' });

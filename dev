@@ -8,10 +8,40 @@ if [ -z "$task_go_bin" ]; then
     task_go_bin=/tmp/haseo-bootstrap/go/bin/go
     export GOPATH="${GOPATH:-/tmp/haseo-bootstrap/gopath}"
     export GOCACHE="${GOCACHE:-/tmp/haseo-bootstrap/cache}"
-  else printf '%s\n' 'Instale Go 1.26+ ou configure AGENT_STORE_GO_BIN.' >&2; exit 1; fi
+  elif [ -x /tmp/agent-store-go/go/bin/go ]; then
+    task_go_bin=/tmp/agent-store-go/go/bin/go
+    export GOPATH="${GOPATH:-/tmp/agent-store-go/gopath}"
+    export GOCACHE="${GOCACHE:-/tmp/agent-store-go/cache}"
+  else printf '%s\n' 'Instale Go 1.26.10+ ou configure AGENT_STORE_GO_BIN.' >&2; exit 1; fi
 fi
 if [ ! -d node_modules ]; then npm ci; fi
 npm run build
 mkdir -p bin
 "$task_go_bin" build -o bin/agent-store ./cmd/agent-store
-exec ./bin/agent-store "$@"
+task_preview_addr="${AGENT_STORE_ADDR:-127.0.0.1:${PORT:-8091}}"
+task_next_addr=false
+for task_arg in "$@"; do
+  if "$task_next_addr"; then task_preview_addr="$task_arg"; task_next_addr=false;
+  elif [ "$task_arg" = -addr ]; then task_next_addr=true;
+  elif [[ "$task_arg" = -addr=* ]]; then task_preview_addr="${task_arg#-addr=}"; fi
+done
+export AGENT_STORE_PUBLIC_ORIGIN="${AGENT_STORE_PUBLIC_ORIGIN:-http://localhost:${task_preview_addr##*:}}"
+export AGENT_STORE_AUTH_URL="http://127.0.0.1:${AGENT_STORE_AUTH_PORT:-8096}"
+node auth/server.mjs --migrate
+task_auth_pid= task_store_pid=
+task_cleanup() {
+  for task_pid in "$task_store_pid" "$task_auth_pid"; do
+    if [ -n "$task_pid" ]; then kill -TERM "$task_pid" 2>/dev/null || true; fi
+  done
+}
+trap task_cleanup EXIT INT TERM
+node auth/server.mjs & task_auth_pid=$!
+task_ready=false
+for task_attempt in {1..50}; do
+  if ! kill -0 "$task_auth_pid" 2>/dev/null; then exit 1; fi
+  if curl --silent --fail "$AGENT_STORE_AUTH_URL/healthz" >/dev/null; then task_ready=true; break; fi
+  sleep 0.1
+done
+if ! "$task_ready"; then printf '%s\n' 'Better Auth não ficou disponível.' >&2; exit 1; fi
+./bin/agent-store "$@" & task_store_pid=$!
+wait -n "$task_auth_pid" "$task_store_pid"

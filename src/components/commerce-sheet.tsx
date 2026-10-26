@@ -8,7 +8,7 @@ import {RadioGroup, RadioGroupOption} from '@/components/glaze/ui/radio-group';
 import {Sheet, SheetAction, SheetBody, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle} from '@/components/glaze/ui/sheet';
 import {Empty, EmptyDescription, EmptyHeader, EmptyTitle} from '@/components/glaze/ui/empty-state';
 import {Alert, AlertAction, AlertTitle} from '@/components/glaze/ui/alert';
-import {money, type Commerce, type Delivery} from '@/lib/commerce';
+import {money,checkoutLoginURL, type Commerce, type Delivery} from '@/lib/commerce';
 import {CheckoutApproval} from '@/components/glaze/blocks/checkout-approval';
 
 const states = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ');
@@ -31,7 +31,8 @@ function Totals({commerce}: {commerce:Commerce}) {
 }
 
 export function CommerceSheet({commerce:c,open,onOpenChange}: {commerce:Commerce;open:boolean;onOpenChange:(open:boolean)=>void}) {
-  const [step,setStep] = useState<'cart'|'delivery'>('cart');
+  const resumeDelivery=useRef(new URLSearchParams(location.search).get('etapa')==='entrega');
+  const [step,setStep] = useState<'cart'|'delivery'>(resumeDelivery.current?'delivery':'cart');
   const form = useRef<HTMLFormElement>(null);
   const previousOpen = useRef(false);
   const latest = useRef({commerce:c,step});
@@ -54,10 +55,16 @@ export function CommerceSheet({commerce:c,open,onOpenChange}: {commerce:Commerce
     else await current.refreshQuote();
   },[]);
   useEffect(() => {
-    if (open && !previousOpen.current) {setStep('cart'); void recover();}
+    if (open && !previousOpen.current) {setStep(resumeDelivery.current?'delivery':'cart'); void recover();}
     previousOpen.current = open;
   },[open,recover]);
   const checkout = c.checkout;
+  useEffect(()=>{
+    if(!open||!resumeDelivery.current||c.accountId===undefined||c.deliveryDefaultLoading||c.loading||c.quoteBusy||c.shippingBusy||c.pending||checkout)return;
+    resumeDelivery.current=false;
+    const postal=c.deliveryDraft.postal_code;
+    if(postal && /^[0-9]{5}-?[0-9]{3}$/.test(postal))void c.calculateShipping(postal);
+  },[open,c.accountId,c.deliveryDefaultLoading,c.loading,c.quoteBusy,c.shippingBusy,c.pending,c.deliveryDraft.postal_code,c.calculateShipping,checkout]);
   useEffect(() => {
     if (open && c.pending && !c.busy && !checkout) setStep('cart');
   },[open,c.pending,c.busy,checkout]);
@@ -68,9 +75,9 @@ export function CommerceSheet({commerce:c,open,onOpenChange}: {commerce:Commerce
     previousView.current=viewKey;
   },[open,viewKey]);
   const title = checkout ? checkout.status === 'open' ? 'Seu pagamento de teste' : checkout.status === 'completed' ? 'Simulação concluída' : checkout.status === 'canceled' ? 'Reserva cancelada' : 'Reserva expirada' : step === 'delivery' ? 'Entrega e contato' : 'Sua sacola';
-  const description = checkout ? 'Nenhuma cobrança ou entrega real.' : step === 'delivery' ? 'Use dados fictícios para experimentar a compra.' : `${c.cartCount} ${c.cartCount === 1 ? 'item' : 'itens'} para revisar antes de continuar.`;
+  const description = checkout ? 'Nenhuma cobrança ou entrega real.' : step === 'delivery' ? 'Preenchemos dados fictícios para o teste. Você pode editá-los.' : `${c.cartCount} ${c.cartCount === 1 ? 'item' : 'itens'} para revisar antes de continuar.`;
   const setField = (name:keyof Delivery,value:string) => c.setDeliveryDraft(previous => ({...previous,[name]:value}));
-  const proceed = () => {c.setError(''); setStep('delivery'); if (c.deliveryDraft.postal_code && /^[0-9]{5}-?[0-9]{3}$/.test(c.deliveryDraft.postal_code)) void c.calculateShipping(c.deliveryDraft.postal_code);};
+  const proceed = () => {if(!c.accountId){location.assign(checkoutLoginURL);return;}c.setError(''); setStep('delivery'); if (c.deliveryDraft.postal_code && /^[0-9]{5}-?[0-9]{3}$/.test(c.deliveryDraft.postal_code)) void c.calculateShipping(c.deliveryDraft.postal_code);};
   const close = () => onOpenChange(false);
   const continueShopping = () => {c.clearCheckout(); setStep('cart'); if (checkout?.status === 'completed') close();};
   const canCreate = Boolean(c.shipping && !c.shippingBusy && !c.busy && !c.resuming);
@@ -82,7 +89,7 @@ export function CommerceSheet({commerce:c,open,onOpenChange}: {commerce:Commerce
       ? {children:'Explorar camisetas',onAction:close}
       : step==='delivery'
         ? {id:'start-checkout',type:'submit',form:'delivery-form',children:c.busy ? 'Preparando checkout…' : 'Continuar para pagamento',disabled:!canCreate}
-        : {id:'continue-to-delivery',children:c.pending ? 'Retomar tentativa' : 'Continuar compra',disabled:c.busy || c.quoteBusy || c.resuming || (!c.quote && !c.pending),onAction:c.pending ? () => c.startCheckout() : proceed};
+        : {id:'continue-to-delivery',children:c.pending ? 'Retomar tentativa' : c.accountId ? 'Continuar compra' : 'Entrar para continuar',disabled:c.accountId===undefined || c.deliveryDefaultLoading || c.busy || c.quoteBusy || c.resuming || (!c.quote && !c.pending),onAction:c.pending ? () => c.startCheckout() : proceed};
   return <Sheet open={open} onOpenChange={next => {if (!c.busy) onOpenChange(next);}}>
     <SheetContent id="bag-dialog" showCloseButton={false} finalFocus={() => document.getElementById('open-bag')}>
       <SheetHeader>

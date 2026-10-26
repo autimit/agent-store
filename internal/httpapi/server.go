@@ -19,12 +19,21 @@ import (
 )
 
 type Server struct {
-	Store    *store.Store
-	ImageDir string
+	Store          *store.Store
+	ImageDir       string
+	AuthURL        string
+	PublicOrigin   string
+	authHTTPClient *http.Client
 }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	if s.AuthURL != "" {
+		s.registerAccounts(mux)
+	}
+	for _, route := range []string{"GET /conta", "GET /conta/autorizar", "GET /checkout/{id}"} {
+		mux.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) { serveEmbedded(w, r, "dist/index.html") })
+	}
 	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml")
 		io.WriteString(w, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text x="7" y="24" font-family="sans-serif" font-size="28" fill="currentColor">a</text></svg>`)
@@ -52,6 +61,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /llms.txt", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		io.WriteString(w, "# Agent Store\n\nLoja fictícia da Autimit. Todos os produtos, estoques, pedidos e pagamentos são demonstrativos. Nenhuma cobrança ou entrega real.\n\n## Interface HTTP\n- [Contrato OpenAPI 3.1](/openapi.json)\n- [Identidade e políticas](/api/v1/store)\n- [Catálogo e variantes](/api/v1/products)\n\nUse GET /api/v1/variants/{id}/availability para consultar estoque. POST /api/v1/shipping-quotes recebe items e postal_code e retorna fretes e prazos simulados, sem reservar. POST /api/v1/quotes aceita shipping com postal_code e service_id para incluir o frete no total. Ao criar checkout, inclua shipping e delivery (contato e endereço fictícios). O CEP do endereço deve coincidir com o da cotação. Não envie preços calculados pelo cliente. POST /api/v1/quotes calcula valores sem reserva. POST /api/v1/checkouts reserva estoque por 15 minutos e requer Idempotency-Key. A criação retorna access_token; envie-o como Authorization: Bearer para ler, cancelar ou simular pagamento desse checkout. Guarde a chave de idempotência até receber resposta para repetir com segurança.\n\nPeça confirmação do cliente antes de reservar estoque. Simular pagamento só é permitido com autorização explícita para a demonstração. Nunca afirme que houve pagamento real, entrega real ou compatibilidade com protocolos que não estão implementados. Este arquivo é orientação textual, não um protocolo de descoberta ou uma autorização. Não há servidor MCP ou A2A nesta entrega.\n")
+		io.WriteString(w, "\n## Autorização da vitrine\nCatálogo e cotações são públicos. Criar, consultar, cancelar e concluir checkouts exige sessão Better Auth válida e titularidade da conta. A criação exige também X-Checkout-Account igual à conta autenticada e Idempotency-Key estável. O access_token do checkout sozinho não autoriza acesso. A conta oferece a revisão em /checkout/{id} e a lista privada em /conta. Não solicite nem copie cookies ou senhas para agentes: a delegação Poppy/OAuth às operações comerciais ainda está pendente.\n")
 	})
 	mux.HandleFunc("GET /robots.txt", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
@@ -204,11 +214,24 @@ func (s *Server) quote(w http.ResponseWriter, r *http.Request) {
 	respond(w, 200, q)
 }
 func (s *Server) createCheckout(w http.ResponseWriter, r *http.Request) {
+	account, err := s.browserAccount(r)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	if r.Header.Get("Origin") != s.PublicOrigin {
+		fail(w, &store.Fault{Code: "csrf_failed", Message: "Use a própria loja para continuar.", Status: 403})
+		return
+	}
+	if r.Header.Get("X-Checkout-Account") != account {
+		fail(w, &store.Fault{Code: "account_changed", Message: "A conta mudou. Entre na conta que iniciou esta compra.", Status: 403})
+		return
+	}
 	var input store.CheckoutInput
 	if !decode(w, r, &input) {
 		return
 	}
-	c, replay, err := s.Store.CreateCheckout(r.Context(), r.Header.Get("Idempotency-Key"), input)
+	c, replay, err := s.Store.CreateAccountCheckout(r.Context(), r.Header.Get("Idempotency-Key"), input, account)
 	if err != nil {
 		fail(w, err)
 		return
@@ -222,6 +245,15 @@ func (s *Server) createCheckout(w http.ResponseWriter, r *http.Request) {
 	respond(w, status, c)
 }
 func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
+	account, err := s.browserAccount(r)
+	if err != nil {
+		fail(w, err)
+		return
+	}
+	if r.Method == "POST" && r.Header.Get("Origin") != s.PublicOrigin {
+		fail(w, &store.Fault{Code: "csrf_failed", Message: "Use a própria loja para continuar.", Status: 403})
+		return
+	}
 	action := ""
 	if r.Method == "POST" {
 		if strings.HasSuffix(r.URL.Path, "/simulate-payment") {
@@ -238,7 +270,7 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 	if token == r.Header.Get("Authorization") {
 		token = ""
 	}
-	c, err := s.Store.Checkout(r.Context(), r.PathValue("id"), token, action)
+	c, err := s.Store.CheckoutForAccount(r.Context(), r.PathValue("id"), token, account, action)
 	if err != nil {
 		fail(w, err)
 		return

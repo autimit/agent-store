@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+: "${AGENT_STORE_PUBLIC_ORIGIN:?Configure AGENT_STORE_PUBLIC_ORIGIN with the public HTTPS origin}"
+if [ -z "${BETTER_AUTH_SECRET:-}" ] && [ -z "${BETTER_AUTH_SECRET_FILE:-}" ]; then
+  printf '%s\n' 'Configure BETTER_AUTH_SECRET or BETTER_AUTH_SECRET_FILE on a persistent volume.' >&2
+  exit 1
+fi
+export AGENT_STORE_AUTH_URL="http://127.0.0.1:${AGENT_STORE_AUTH_PORT:-8096}"
+export AGENT_STORE_AUTH_DIR="${AGENT_STORE_AUTH_DIR:-/data/auth}"
+if [ "${AGENT_STORE_AUTH_MIGRATE:-false}" = true ]; then node auth/server.mjs --migrate; fi
+task_auth_pid= task_store_pid=
+task_cleanup() {
+  for task_pid in "$task_store_pid" "$task_auth_pid"; do
+    if [ -n "$task_pid" ]; then kill -TERM "$task_pid" 2>/dev/null || true; fi
+  done
+}
+trap task_cleanup EXIT INT TERM
+node auth/server.mjs & task_auth_pid=$!
+node --input-type=module - <<'JS'
+let ready=false;
+for(let attempt=0;attempt<50;attempt++){
+  try{const r=await fetch(process.env.AGENT_STORE_AUTH_URL+'/healthz');if(r.ok){ready=true;break;}}catch{}
+  await new Promise(resolve=>setTimeout(resolve,100));
+}
+if(!ready)throw new Error('Better Auth did not become ready; storefront checkout will remain unavailable.');
+JS
+./agent-store & task_store_pid=$!
+wait -n "$task_auth_pid" "$task_store_pid"

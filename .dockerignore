@@ -3,6 +3,9 @@
 .env
 .env.*
 .runtime
+.poppy
+.aws
+.codex
 .railway
 bin
 node_modules

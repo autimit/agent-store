@@ -1,4 +1,5 @@
 import {useEffect, useRef, useSyncExternalStore} from 'react';
+import {authClient} from '@/lib/auth-client';
 
 export type Image = {id: string; cor: string; url: string; apelidos?: string[]};
 export type Variant = {id: string; cor: string; tamanho: string; preco_centavos: number; disponivel: number; imagem_id: string};
@@ -11,13 +12,18 @@ export type Line = {variant_id: string; name: string; color: string; size: strin
 export type Quote = {items: Line[]; subtotal_cents: number; shipping_cents: number; total_cents: number; currency: string; demo: boolean; shipping_required: boolean; shipping_option?: ShippingOption; postal_code?: string};
 export type Checkout = {id: string; access_token?: string; status: 'open' | 'completed' | 'canceled' | 'expired'; payment_method: 'pix' | 'card'; payment_status: string; quote: Quote; created_at: string; expires_at: string; order_id?: string; real_payment: boolean; delivery?: Delivery};
 type ShippingResult = {postal_code: string; options: ShippingOption[]};
-type Attempt = {key: string; body: string};
-type SavedCheckout = {id: string; token: string; cartCleared: boolean};
+type Attempt = {key: string; body: string; accountId: string};
+type SavedCheckout = {id: string; token: string; cartCleared: boolean; accountId:string};
 export type APIError = Error & {status?: number; code?: string};
 const CART_KEY = 'agent-store.cart.v2';
 const CHECKOUT_KEY = 'agent-store.checkout.v2';
 const ATTEMPT_KEY = 'agent-store.checkout-attempt.v2';
 const DELIVERY_KEY = 'agent-store.delivery-draft.v1';
+const SHIPPING_KEY = 'agent-store.shipping-selection.v1';
+const DRAFT_OWNER_KEY='agent-store.delivery-owner.v1';
+export function clearAccountDraft(){for(const key of [DELIVERY_KEY,DRAFT_OWNER_KEY,SHIPPING_KEY,CHECKOUT_KEY])remove(key,true);}
+export const checkoutReturnPath='/?sacola=1&etapa=entrega';
+export const checkoutLoginURL='/conta?returnTo='+encodeURIComponent(checkoutReturnPath);
 const fields: (keyof Delivery)[] = ['full_name', 'email', 'phone', 'postal_code', 'street', 'number', 'complement', 'neighborhood', 'city', 'state'];
 export const money = (cents: number) => new Intl.NumberFormat('pt-BR', {style: 'currency', currency: 'BRL'}).format(cents / 100);
 function read<T>(key: string, fallback: T, session = false): T { try { return JSON.parse((session ? sessionStorage : localStorage).getItem(key) || 'null') ?? fallback; } catch { return fallback; } }
@@ -26,7 +32,7 @@ function remove(key: string, session = false) { try { (session ? sessionStorage 
 function message(error: unknown) { return error instanceof Error ? error.message : 'Não foi possível concluir. Tente novamente.'; }
 function status(error: unknown) { return (error as APIError)?.status; }
 function normalizeDelivery(value: Partial<Delivery>): Delivery { return Object.fromEntries(fields.map(name => [name, String(value[name] || '').trim()])) as Delivery; }
-function savedAttempt(): Attempt | null { const value = read<Attempt | null>(ATTEMPT_KEY, null, true); return typeof value?.key === 'string' && typeof value?.body === 'string' ? value : null; }
+function savedAttempt(): Attempt | null { const value = read<Attempt | null>(ATTEMPT_KEY, null, true); return typeof value?.key === 'string' && typeof value?.body === 'string' && typeof value?.accountId==='string' ? value : null; }
 function initialCart(): CartItem[] {
   const value = read<unknown>(CART_KEY, []);
   if (!Array.isArray(value)) return [];
@@ -46,17 +52,22 @@ export async function api<T = unknown>(path: string, options: RequestInit = {}):
 }
 
 type State = {
+  accountId?:string|null;
+  deliveryDefault:Delivery|null; deliveryDefaultLoading:boolean;
   product: Product | null; loading: boolean; error: string; busy: boolean; pending: boolean; resuming: boolean;
   cart: CartItem[]; checkout: Checkout | null; payment: 'pix' | 'card'; deliveryDraft: Partial<Delivery>;
   shipping: ShippingSelection | null; shippingOptions: ShippingOption[]; shippingBusy: boolean;
   quote: Quote | null; quoteBusy: boolean;
 };
 class CommerceStore {
-  private state: State = {product: null, loading: true, error: '', busy: false, pending: Boolean(savedAttempt()), resuming: false, cart: initialCart(), checkout: null, payment: 'pix', deliveryDraft: read<Partial<Delivery>>(DELIVERY_KEY, {}, true), shipping: null, shippingOptions: [], shippingBusy: false, quote: null, quoteBusy: false};
+  private state: State = {deliveryDefault:null,deliveryDefaultLoading:false,product: null, loading: true, error: '', busy: false, pending: Boolean(savedAttempt()), resuming: false, cart: initialCart(), checkout: null, payment: 'pix', deliveryDraft: {}, shipping: null, shippingOptions: [], shippingBusy: false, quote: null, quoteBusy: false};
   private listeners = new Set<() => void>();
   private token = '';
   private cartCleared = false;
   private checkoutID = '';
+  private checkoutOwner = '';
+  private activeAccount:string|null|undefined;
+  private sessionEpoch=0;
   private shippingVersion = 0;
   private quoteVersion = 0;
   private booted = false;
@@ -66,8 +77,35 @@ class CommerceStore {
   private patch(value: Partial<State>) { this.state = {...this.state, ...value}; this.listeners.forEach(listener => listener()); }
   private isLocked() { return this.state.busy || this.state.pending || this.state.resuming || this.state.checkout?.status === 'open'; }
   private variant(id: string) { return this.state.product?.variantes.find(item => item.id === id); }
-  private invalidateShipping() { ++this.shippingVersion; ++this.quoteVersion; this.patch({shipping: null, shippingOptions: [], shippingBusy: false, quote: null, quoteBusy: false}); }
-  private persistCheckout() { if (this.state.checkout) write(CHECKOUT_KEY, {id: this.state.checkout.id, token: this.token, cartCleared: this.cartCleared}, true); }
+  private invalidateShipping() { ++this.shippingVersion; ++this.quoteVersion; remove(SHIPPING_KEY,true); this.patch({shipping: null, shippingOptions: [], shippingBusy: false, quote: null, quoteBusy: false}); }
+  private persistCheckout() { if (this.state.checkout) write(CHECKOUT_KEY, {id: this.state.checkout.id, token: this.token, cartCleared: this.cartCleared,accountId:this.checkoutOwner}, true); }
+  sessionChanged=(accountId:string|null)=>{
+    const changed=this.activeAccount!==undefined && this.activeAccount!==accountId;
+    this.activeAccount=accountId;
+    if(changed){++this.sessionEpoch;this.checkoutID='';this.checkoutOwner='';this.token='';remove(CHECKOUT_KEY,true);++this.shippingVersion;++this.quoteVersion;this.patch({deliveryDefault:null,deliveryDefaultLoading:false,checkout:null,deliveryDraft:{},resuming:false,shipping:null,shippingOptions:[],shippingBusy:false,quote:null,quoteBusy:false});}
+    const owner=read<string|null>(DRAFT_OWNER_KEY,null,true);
+    const deliveryDraft=(!owner || owner===accountId)?read<Partial<Delivery>>(DELIVERY_KEY,{},true):{};
+    this.patch({accountId,deliveryDraft});
+    if(accountId && !this.state.deliveryDefault && !this.state.deliveryDefaultLoading)void this.loadDeliveryDefault(accountId);
+  };
+  private loadDeliveryDefault=async(accountId:string)=>{
+    const epoch=this.sessionEpoch;
+    this.patch({deliveryDefaultLoading:true});
+    try{
+      const result=await api<{demo:boolean;delivery:Delivery}>('/api/account/demo-delivery');
+      if(epoch!==this.sessionEpoch || this.activeAccount!==accountId)return;
+      // Drafts, including intentionally cleared fields, win over the preset.
+      const deliveryDraft={...result.delivery,...this.state.deliveryDraft};
+      write(DELIVERY_KEY,deliveryDraft,true);write(DRAFT_OWNER_KEY,accountId,true);
+      this.patch({deliveryDefault:result.delivery,deliveryDraft});
+    }catch(error){if(epoch===this.sessionEpoch && this.activeAccount===accountId)this.patch({error:message(error)});}
+    finally{if(epoch===this.sessionEpoch && this.activeAccount===accountId)this.patch({deliveryDefaultLoading:false});}
+  };
+  private signedInAccount=async()=>{
+    const result=await authClient.getSession();
+    if(result.error)throw new Error('Não foi possível conferir sua conta. Tente novamente.');
+    const account=result.data?.user.id || null;this.sessionChanged(account);return account;
+  };
   private acceptCheckout(checkout: Checkout) {
     this.checkoutID = checkout.id;
     if (checkout.access_token) this.token = checkout.access_token;
@@ -78,8 +116,9 @@ class CommerceStore {
     if (this.booted) return;
     this.booted = true;
     const saved = read<SavedCheckout | null>(CHECKOUT_KEY, null, true);
-    if (typeof saved?.id === 'string' && typeof saved.token === 'string') {
-      this.checkoutID = saved.id; this.token = saved.token; this.cartCleared = Boolean(saved.cartCleared); this.patch({resuming: true});
+    if (typeof saved?.id === 'string' && typeof saved.token === 'string' && typeof saved.accountId==='string') {
+      this.checkoutID = saved.id; this.token = saved.token; this.checkoutOwner=saved.accountId; this.cartCleared = Boolean(saved.cartCleared); this.patch({resuming: true});
+    } else if(saved){remove(CHECKOUT_KEY,true);remove(ATTEMPT_KEY,true);this.patch({pending:false,error:'O checkout anterior não estava vinculado a uma conta. Entre para iniciar uma nova compra.'});
     }
     await this.reloadProduct();
     if (this.checkoutID) await this.refreshCheckout();
@@ -100,7 +139,7 @@ class CommerceStore {
     if (this.isLocked()) return;
     const deliveryDraft = typeof value === 'function' ? value(this.state.deliveryDraft) : value;
     if (deliveryDraft.postal_code !== this.state.deliveryDraft.postal_code) this.invalidateShipping();
-    write(DELIVERY_KEY, deliveryDraft, true); this.patch({deliveryDraft});
+    write(DELIVERY_KEY, deliveryDraft, true);write(DRAFT_OWNER_KEY,this.state.accountId||null,true); this.patch({deliveryDraft});
   };
   private commitCart(cart: CartItem[]) {
     this.invalidateShipping(); write(CART_KEY, cart); this.patch({cart, error: ''});
@@ -154,7 +193,7 @@ class CommerceStore {
     const selection = {postal_code: postal, service_id: serviceID};
     const quote = await api<Quote>('/api/v1/quotes', {method: 'POST', body: JSON.stringify({items: this.state.cart, shipping: selection})});
     if (serial !== this.shippingVersion) return false;
-    this.patch({shipping: selection, quote, shippingBusy: false}); return true;
+    write(SHIPPING_KEY,{...selection,accountId:this.state.accountId||null},true);this.patch({shipping: selection, quote, shippingBusy: false}); return true;
   };
   calculateShipping = async (postal: string) => {
     if (this.isLocked() || !this.state.cart.length) return false;
@@ -164,7 +203,9 @@ class CommerceStore {
       const result = await api<ShippingResult>('/api/v1/shipping-quotes', {method: 'POST', body: JSON.stringify({items: this.state.cart, postal_code: postal})});
       if (serial !== this.shippingVersion) return false;
       this.patch({shippingOptions: result.options});
-      return await this.quoteShipping(result.postal_code, result.options[0].id, serial);
+      const saved=read<(ShippingSelection & {accountId?:string|null})|null>(SHIPPING_KEY,null,true);
+      const service=(!saved?.accountId || saved.accountId===this.state.accountId) && saved?.postal_code===result.postal_code && result.options.some(o=>o.id===saved.service_id) ? saved.service_id:result.options[0].id;
+      return await this.quoteShipping(result.postal_code, service, serial);
     } catch (error) { if (serial === this.shippingVersion) this.patch({shippingBusy: false, error: message(error)}); return false; }
   };
   selectShipping = async (serviceID: string) => {
@@ -177,30 +218,44 @@ class CommerceStore {
   };
   startCheckout = async (delivery?: Partial<Delivery>) => {
     if (this.state.busy || this.state.resuming || this.state.checkout?.status === 'open') return false;
+    this.patch({busy:true,error:''});
+    let accountId:string|null;
+    try{accountId=await this.signedInAccount();}catch(error){this.patch({busy:false,error:message(error)});return false;}
+    this.patch({busy:false});
+    if(!accountId){location.assign(checkoutLoginURL);return false;}
     let attempt = this.attempt || savedAttempt();
+    if(attempt && attempt.accountId!==accountId){this.patch({pending:true,error:'Entre na conta que iniciou esta tentativa para retomá-la com segurança.'});return false;}
     if (!attempt) {
       const clean = normalizeDelivery(delivery || this.state.deliveryDraft);
       if (!this.state.shipping || this.state.shipping.postal_code !== clean.postal_code.replace('-', '')) { this.patch({error: 'Calcule o frete e escolha uma opção antes de continuar.'}); return false; }
       const items = this.state.cart.map(item => ({variant_id: item.variant_id, quantity: item.quantity})).sort((a, b) => a.variant_id.localeCompare(b.variant_id));
-      attempt = {key: crypto.randomUUID(), body: JSON.stringify({items, payment_method: this.state.payment, shipping: this.state.shipping, delivery: clean})};
+      attempt = {key: crypto.randomUUID(),accountId, body: JSON.stringify({items, payment_method: this.state.payment, shipping: this.state.shipping, delivery: clean})};
       this.attempt = attempt; write(ATTEMPT_KEY, attempt, true);
     }
     this.patch({busy: true, pending: true, error: ''});
+    const epoch=this.sessionEpoch;
     try {
-      const checkout = await api<Checkout>('/api/v1/checkouts', {method: 'POST', headers: {'Idempotency-Key': attempt.key}, body: attempt.body});
+      const checkout = await api<Checkout>('/api/v1/checkouts', {method: 'POST', headers: {'Idempotency-Key': attempt.key,'X-Checkout-Account':attempt.accountId}, body: attempt.body});
+      this.checkoutOwner=attempt.accountId;
+      if(epoch!==this.sessionEpoch){this.attempt=null;remove(ATTEMPT_KEY,true);this.patch({pending:false,error:'A compra foi salva na conta que a iniciou. Confira em Suas compras.'});return false;}
       this.cartCleared = false; this.patch({pending: false}); this.attempt = null; remove(ATTEMPT_KEY, true); this.acceptCheckout(checkout);
       await this.reloadProduct(); return true;
     } catch (error) {
       const code = status(error);
-      if (code && code >= 400 && code < 500) { this.attempt = null; remove(ATTEMPT_KEY, true); this.patch({pending: false}); }
+      if (code && code >= 400 && code < 500 && code!==401 && code!==403) { this.attempt = null; remove(ATTEMPT_KEY, true); this.patch({pending: false}); }
+      if(code===401)location.assign(checkoutLoginURL);
       this.patch({error: message(error)}); return false;
     } finally { this.patch({busy: false}); }
   };
   refreshCheckout = async () => {
     const id = this.state.checkout?.id || this.checkoutID;
     if (!id || !this.token) return false;
+    const epoch=this.sessionEpoch;
     try {
+      const account=await this.signedInAccount();
+      if(!account || account!==this.checkoutOwner){this.patch({checkout:null,resuming:false,error:'Entre na conta desta compra para retomá-la.'});return false;}
       const checkout = await api<Checkout>(`/api/v1/checkouts/${encodeURIComponent(id)}`, {headers: {Authorization: `Bearer ${this.token}`}});
+      if(epoch!==this.sessionEpoch)return false;
       this.acceptCheckout(checkout); this.patch({resuming: false}); return true;
     } catch (error) {
       if (status(error) === 404) { this.checkoutID = ''; this.token = ''; remove(CHECKOUT_KEY, true); this.patch({checkout: null, resuming: false}); }
@@ -210,8 +265,13 @@ class CommerceStore {
   checkoutAction = async (action: 'simulate-payment' | 'cancel') => {
     if (this.state.busy || !this.state.checkout) return false;
     this.patch({busy: true, error: ''});
+    const epoch=this.sessionEpoch;
     try {
+      const account=await this.signedInAccount();
+      if(!account){location.assign(checkoutLoginURL);return false;}
+      if(account!==this.checkoutOwner){this.patch({checkout:null,error:'Esta compra pertence a outra conta.'});return false;}
       const checkout = await api<Checkout>(`/api/v1/checkouts/${encodeURIComponent(this.state.checkout.id)}/${action}`, {method: 'POST', headers: {Authorization: `Bearer ${this.token}`}, body: '{}'});
+      if(epoch!==this.sessionEpoch)return false;
       this.acceptCheckout(checkout); await this.reloadProduct(); return true;
     } catch (error) {
       const recovered = await this.refreshCheckout();
@@ -226,11 +286,13 @@ class CommerceStore {
   };
 }
 export function useCommerce() {
+  const {data:session,isPending}=authClient.useSession();
   const controller = useRef<CommerceStore | null>(null);
   if (!controller.current) controller.current = new CommerceStore();
   const store = controller.current;
   const state = useSyncExternalStore(store.subscribe, store.snapshot, store.snapshot);
   useEffect(() => { void store.boot(); }, [store]);
+  useEffect(()=>{if(!isPending)store.sessionChanged(session?.user.id||null);},[store,session?.user.id,isPending]);
   const cartCount = state.cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = state.cart.reduce((sum, item) => sum + (state.product?.variantes.find(v => v.id === item.variant_id)?.preco_centavos || 0) * item.quantity, 0);
   return {...state, cartCount, subtotal, locked: state.busy || state.pending || state.resuming || state.checkout?.status === 'open', setError: store.setError, setPayment: store.setPayment, setDeliveryDraft: store.setDeliveryDraft, setCart: store.setCart, updateQuantity: store.updateQuantity, changeSize: store.changeSize, removeItem: store.removeItem, addItem: store.addItem, calculateShipping: store.calculateShipping, selectShipping: store.selectShipping, startCheckout: store.startCheckout, checkoutAction: store.checkoutAction, clearCheckout: store.clearCheckout, reloadProduct: store.reloadProduct, refreshQuote: store.refreshQuote, refreshCheckout: store.refreshCheckout};

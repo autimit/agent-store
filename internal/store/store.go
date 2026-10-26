@@ -95,7 +95,7 @@ func Open(ctx context.Context, path string, catalog Catalog) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
-	hasDelivery := false
+	hasDelivery, hasOwner := false, false
 	for columns.Next() {
 		var cid, notNull, primaryKey int
 		var name, dataType string
@@ -108,6 +108,9 @@ func Open(ctx context.Context, path string, catalog Catalog) (*Store, error) {
 		if name == "delivery" {
 			hasDelivery = true
 		}
+		if name == "account_id" {
+			hasOwner = true
+		}
 	}
 	err = columns.Err()
 	columns.Close()
@@ -117,6 +120,12 @@ func Open(ctx context.Context, path string, catalog Catalog) (*Store, error) {
 	}
 	if !hasDelivery {
 		if _, err = db.ExecContext(ctx, "ALTER TABLE checkouts ADD COLUMN delivery TEXT NOT NULL DEFAULT ''"); err != nil {
+			db.Close()
+			return nil, err
+		}
+	}
+	if !hasOwner {
+		if _, err = db.ExecContext(ctx, "ALTER TABLE checkouts ADD COLUMN account_id TEXT NOT NULL DEFAULT ''"); err != nil {
 			db.Close()
 			return nil, err
 		}
@@ -143,6 +152,7 @@ func Open(ctx context.Context, path string, catalog Catalog) (*Store, error) {
 	return s, nil
 }
 func (s *Store) Close() error { return s.db.Close() }
+
 func (s *Store) Metadata() map[string]any {
 	return map[string]any{"name": s.catalog.Name, "demo": true, "currency": "BRL", "checkout_mode": "simulation", "shipping": "Frete padrão e expresso por CEP, com valores e prazos fictícios. Sem entrega real.", "reservation_minutes": 15, "payment_methods": []string{"pix", "card"}, "policies": map[string]string{"product": "Produto conceitual. Marca, materiais e desempenho não são declarados.", "returns": "Não há venda ou entrega real nesta demonstração. A política comercial deverá ser definida antes de uma operação real."}}
 }
@@ -335,6 +345,98 @@ func randomID(prefix string) (string, error) {
 }
 
 func (s *Store) CreateCheckout(ctx context.Context, key string, input CheckoutInput) (Checkout, bool, error) {
+	return s.createCheckout(ctx, key, input, "")
+}
+
+func (s *Store) CreateAccountCheckout(ctx context.Context, key string, input CheckoutInput, account string) (Checkout, bool, error) {
+	if account == "" {
+		return Checkout{}, false, fault("unauthorized", "Entre na sua conta.", 401)
+	}
+	if len(key) < 16 || len(key) > 100 || strings.ContainsAny(key, "\r\n\t ") {
+		return Checkout{}, false, fault("invalid_idempotency_key", "Chave de idempotência inválida.", 400)
+	}
+	sum := sha256.Sum256([]byte(account + "\x00" + key))
+	return s.createCheckout(ctx, fmt.Sprintf("account_%x", sum), input, account)
+}
+
+func (s *Store) AccountCheckout(ctx context.Context, id, account, action string) (Checkout, error) {
+	var token string
+	if account == "" {
+		return Checkout{}, fault("unauthorized", "Entre na sua conta.", 401)
+	}
+	if err := s.db.QueryRowContext(ctx, "SELECT token FROM checkouts WHERE id=? AND account_id=?", id, account).Scan(&token); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Checkout{}, fault("checkout_not_found", "Checkout não encontrado.", 404)
+		}
+		return Checkout{}, err
+	}
+	return s.Checkout(ctx, id, token, action)
+}
+
+func (s *Store) CheckoutForAccount(ctx context.Context, id, token, account, action string) (Checkout, error) {
+	var exists int
+	if account == "" {
+		return Checkout{}, fault("unauthorized", "Entre na sua conta.", 401)
+	}
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM checkouts WHERE id=? AND account_id=?", id, account).Scan(&exists); err != nil {
+		return Checkout{}, err
+	}
+	if exists != 1 {
+		return Checkout{}, fault("checkout_not_found", "Checkout não encontrado.", 404)
+	}
+	return s.Checkout(ctx, id, token, action)
+}
+
+type AccountPurchase struct {
+	ID        string    `json:"id"`
+	Status    string    `json:"status"`
+	Total     int64     `json:"total_cents"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (s *Store) AccountPurchases(ctx context.Context, account string) ([]AccountPurchase, error) {
+	if account == "" {
+		return nil, fault("unauthorized", "Entre na sua conta.", 401)
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	if err = s.expire(ctx, tx); err != nil {
+		return nil, err
+	}
+	rows, err := tx.QueryContext(ctx, "SELECT id,state,quote,created_at FROM checkouts WHERE account_id=? ORDER BY created_at DESC,id DESC LIMIT 30", account)
+	if err != nil {
+		return nil, err
+	}
+	result := []AccountPurchase{}
+	for rows.Next() {
+		var p AccountPurchase
+		var quote string
+		var created int64
+		if err = rows.Scan(&p.ID, &p.Status, &quote, &created); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		var q Quote
+		if err = json.Unmarshal([]byte(quote), &q); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		p.Total = q.Total
+		p.CreatedAt = time.Unix(created, 0).UTC()
+		result = append(result, p)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	return result, tx.Commit()
+}
+
+func (s *Store) createCheckout(ctx context.Context, key string, input CheckoutInput, account string) (Checkout, bool, error) {
 	if len(key) < 16 || len(key) > 100 || strings.ContainsAny(key, "\r\n\t ") {
 		return Checkout{}, false, fault("invalid_idempotency_key", "Envie Idempotency-Key com 16 a 100 caracteres, sem espaços.", 400)
 	}
@@ -398,7 +500,7 @@ func (s *Store) CreateCheckout(ctx context.Context, key string, input CheckoutIn
 	c := Checkout{ID: id, Token: token, Status: "open", PaymentMethod: input.PaymentMethod, PaymentStatus: "simulated_pending", Quote: q, CreatedAt: now, ExpiresAt: now.Add(15 * time.Minute), Delivery: input.Delivery}
 	quoteJSON, _ := json.Marshal(q)
 	deliveryJSON, _ := json.Marshal(input.Delivery)
-	_, err = tx.ExecContext(ctx, `INSERT INTO checkouts(id,token,idem_key,request_hash,state,payment_method,quote,created_at,expires_at,delivery) VALUES (?,?,?,?,?,?,?,?,?,?)`, id, token, key, hash, c.Status, c.PaymentMethod, string(quoteJSON), now.Unix(), c.ExpiresAt.Unix(), string(deliveryJSON))
+	_, err = tx.ExecContext(ctx, `INSERT INTO checkouts(id,token,idem_key,request_hash,state,payment_method,quote,created_at,expires_at,delivery,account_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)`, id, token, key, hash, c.Status, c.PaymentMethod, string(quoteJSON), now.Unix(), c.ExpiresAt.Unix(), string(deliveryJSON), account)
 	if err != nil {
 		return Checkout{}, false, err
 	}

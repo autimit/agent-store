@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -24,11 +25,31 @@ func testAPI(t *testing.T) http.Handler {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { s.Close() })
-	return (&Server{Store: s, ImageDir: "../../data/images"}).Handler()
+	return (&Server{Store: s, ImageDir: "../../data/images", AuthURL: "http://127.0.0.1:8096", PublicOrigin: "http://store.test", authHTTPClient: &http.Client{Transport: sessionTransport{}}}).Handler()
+}
+
+type sessionTransport struct{}
+
+func (sessionTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	if c, e := r.Cookie("test_session"); e == nil && c.Value == "provider-down" {
+		return &http.Response{StatusCode: 503, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{}`))}, nil
+	}
+	account := ""
+	if c, e := r.Cookie("test_session"); e == nil && (c.Value == "account-a" || c.Value == "account-b") {
+		account = c.Value
+	}
+	body := "null"
+	if account != "" {
+		body = `{"user":{"id":"` + account + `"}}`
+	}
+	return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
 }
 func request(h http.Handler, method, path, body, token, key string) *httptest.ResponseRecorder {
-	r := httptest.NewRequest(method, path, strings.NewReader(body))
+	r := httptest.NewRequest(method, "http://store.test"+path, strings.NewReader(body))
 	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Cookie", "test_session=account-a")
+	r.Header.Set("Origin", "http://store.test")
+	r.Header.Set("X-Checkout-Account", "account-a")
 	if token != "" {
 		r.Header.Set("Authorization", "Bearer "+token)
 	}

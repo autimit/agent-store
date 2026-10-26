@@ -3,7 +3,7 @@
   "info": {
     "title": "Agent Store — API de demonstração",
     "version": "0.3.0",
-    "description": "Loja fictícia da Autimit. Produtos, valores e prazos demonstrativos; sem cobrança ou entrega real. Preços em centavos BRL. Cote frete pelo CEP e inclua shipping e delivery ao criar checkout; o backend recalcula os valores. Use dados de contato/endereço fictícios. Sem MCP/A2A nesta versão."
+    "description": "Loja fictícia da Autimit. Produtos, valores e prazos demonstrativos; sem cobrança ou entrega real. Preços em centavos BRL. Cote frete pelo CEP e inclua shipping e delivery ao criar checkout; o backend recalcula os valores. Use dados de contato/endereço fictícios. Sem MCP/A2A nesta versão. O checkout da vitrine exige sessão Better Auth e titularidade da conta. Este contrato não implementa delegação Poppy/OAuth a agentes."
   },
   "servers": [
     {
@@ -270,6 +270,15 @@
               "minLength": 16,
               "maxLength": 100
             }
+          },
+          {
+            "name": "X-Checkout-Account",
+            "in": "header",
+            "required": true,
+            "description": "Identificador da conta da sessão quando esta tentativa foi iniciada. Deve coincidir com a conta autenticada; evita repetir uma tentativa sob outra conta.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -283,22 +292,28 @@
               }
             }
           },
-          "default": {
-            "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
           "201": {
             "description": "Criado; retorna access_token. Replay retorna 200 e Idempotency-Replayed: true. A chave possui retenção durante a vida do banco de demonstração.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Checkout"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Entre na conta para continuar."
+          },
+          "503": {
+            "description": "Não foi possível validar a sessão; nenhuma compra anônima será criada."
+          },
+          "default": {
+            "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -313,7 +328,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "StoreSession": []
+          }
+        ]
       }
     },
     "/api/v1/checkouts/{id}": {
@@ -341,6 +361,12 @@
               }
             }
           },
+          "401": {
+            "description": "Entre na conta para continuar."
+          },
+          "503": {
+            "description": "Não foi possível validar a sessão; nenhuma compra anônima será criada."
+          },
           "default": {
             "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
             "content": {
@@ -354,6 +380,7 @@
         },
         "security": [
           {
+            "StoreSession": [],
             "checkoutToken": []
           }
         ]
@@ -384,6 +411,12 @@
               }
             }
           },
+          "401": {
+            "description": "Entre na conta para continuar."
+          },
+          "503": {
+            "description": "Não foi possível validar a sessão; nenhuma compra anônima será criada."
+          },
           "default": {
             "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
             "content": {
@@ -397,6 +430,7 @@
         },
         "security": [
           {
+            "StoreSession": [],
             "checkoutToken": []
           }
         ],
@@ -440,6 +474,12 @@
               }
             }
           },
+          "401": {
+            "description": "Entre na conta para continuar."
+          },
+          "503": {
+            "description": "Não foi possível validar a sessão; nenhuma compra anônima será criada."
+          },
           "default": {
             "description": "Erro estruturado; estoque insuficiente ou checkout encerrado: 409; inexistente ou token inválido: 404; entrada inválida: 400.",
             "content": {
@@ -453,6 +493,7 @@
         },
         "security": [
           {
+            "StoreSession": [],
             "checkoutToken": []
           }
         ],
@@ -1144,6 +1185,12 @@
         "type": "http",
         "scheme": "bearer",
         "description": "access_token retornado na criação; autoriza apenas o checkout correspondente."
+      },
+      "StoreSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "better-auth.session_token",
+        "description": "Sessão de navegador gerenciada pelo Better Auth. Em HTTPS a biblioteca pode usar prefixo de cookie seguro. Tokens de checkout isolados não substituem login nem permitem acessar compras de outra conta."
       }
     }
   }
